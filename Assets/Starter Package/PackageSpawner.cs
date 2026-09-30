@@ -1,20 +1,4 @@
-﻿/*
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
@@ -40,12 +24,13 @@ public class PackageSpawner : MonoBehaviour
 
     public static Vector3 FindRandomLocation(ARPlane plane)
     {
-        // Select random triangle in Mesh
         var mesh = plane.GetComponent<ARPlaneMeshVisualizer>().mesh;
         var triangles = mesh.triangles;
-        var triangle = triangles[(int)Random.Range(0, triangles.Length - 1)] / 3 * 3;
+        
+        // Evita errores fuera de rango en los triángulos de la malla
+        int triangleIndex = Random.Range(0, triangles.Length / 3) * 3;
         var vertices = mesh.vertices;
-        var randomInTriangle = RandomInTriangle(vertices[triangle], vertices[triangle + 1]);
+        var randomInTriangle = RandomInTriangle(vertices[triangles[triangleIndex]], vertices[triangles[triangleIndex + 1]]);
         var randomPoint = plane.transform.TransformPoint(randomInTriangle);
 
         return randomPoint;
@@ -61,16 +46,36 @@ public class PackageSpawner : MonoBehaviour
 
     private void Update()
     {
+        // Solo spawnea o mantiene el paquete si el juego realmente ha comenzado
+        if (GameManager.Instance != null && !GameManager.Instance.IsJuegoActivo()) return;
+
         var lockedPlane = DrivingSurfaceManager.LockedPlane;
         if (lockedPlane != null)
         {
+            // Al ser destruido en PackageBehaviour, Package vuelve a ser null y genera otro
             if (Package == null)
             {
                 SpawnPackage(lockedPlane);
             }
+            else
+            {
+                // Corrección para mantener la altura al nivel del plano AR
+                Vector3 pos = Package.transform.position;
+                pos.y = lockedPlane.center.y;
+                Package.transform.position = pos;
+            }
+        }
+    }
 
-            var packagePosition = Package.gameObject.transform.position;
-            packagePosition.Set(packagePosition.x, lockedPlane.center.y, packagePosition.z);
+    /// <summary>
+    /// Destruye el paquete activo si existe (para limpiar la escena).
+    /// </summary>
+    public void LimpiarPaquete()
+    {
+        if (Package != null)
+        {
+            Destroy(Package.gameObject);
+            Package = null;
         }
     }
 }

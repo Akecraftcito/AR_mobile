@@ -23,4 +23,25 @@ using UnityEngine;
  */
 public class PackageBehaviour : MonoBehaviour
 {
+	public float RotationSpeed = 45f;
+
+	private void Update()
+	{
+		transform.Rotate(Vector3.up, RotationSpeed * Time.deltaTime, Space.Self);
+	}
+    private void OnTriggerEnter(Collider other)
+    {
+        // Detecta si lo tocó el carro (puedes verificar por Tag "Player" o por el componente CarBehaviour)
+        if (other.CompareTag("Player") || other.GetComponent<CarBehaviour>() != null)
+        {
+            // 1. Avisar al GameManager que se recolectó un paquete
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RecolectarPaquete();
+            }
+
+            // 2. Destruir este objeto en la escena
+            Destroy(gameObject);
+        }
+    }
 }
